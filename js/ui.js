@@ -16,12 +16,17 @@ window.CQUI = (() => {
     setTimeout(() => item.remove(), 2600);
   }
 
-  function setSoundLabels(enabled) {
-    const text = enabled ? 'Sound: On' : 'Sound: Off';
-    const menu = $('#sound-toggle-menu');
-    const game = $('#sound-toggle-game');
-    if (menu) menu.textContent = text;
-    if (game) game.textContent = text;
+  function setAudioLabels({ music, sfx }) {
+    const pairs = [
+      ['#music-toggle-menu', `Music: ${music ? 'On' : 'Off'}`],
+      ['#music-toggle-game', `Music: ${music ? 'On' : 'Off'}`],
+      ['#sfx-toggle-menu', `SFX: ${sfx ? 'On' : 'Off'}`],
+      ['#sfx-toggle-game', `SFX: ${sfx ? 'On' : 'Off'}`]
+    ];
+    pairs.forEach(([sel, text]) => {
+      const el = $(sel);
+      if (el) el.textContent = text;
+    });
   }
 
   function confirm({ title, message, onConfirm }) {
@@ -51,5 +56,5 @@ window.CQUI = (() => {
       .replaceAll("'", '&#039;');
   }
 
-  return { $, $$, screen, toast, setSoundLabels, confirm, escapeHtml };
+  return { $, $$, screen, toast, setAudioLabels, confirm, escapeHtml };
 })();
