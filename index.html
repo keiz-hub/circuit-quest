@@ -8,6 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/styles.css" />
+  <link rel="stylesheet" href="css/mobile.css" />
 </head>
 <body data-palette="olive">
   <div class="gb-shell" aria-hidden="true">
@@ -37,29 +38,42 @@
     <section id="screen-menu" class="screen menu-screen">
       <div class="menu-grid">
         <section class="title-card gb-card">
-          <div class="mini-map-preview" aria-hidden="true">
-            <span class="map-dot dot-1"></span>
-            <span class="map-dot dot-2"></span>
-            <span class="map-dot dot-3"></span>
-            <span class="map-path-preview"></span>
-            <div class="preview-hero sprite-preview engineer"><span></span></div>
-          </div>
+          <figure class="menu-hero">
+            <img src="assets/menu-hero.png" alt="Illustration of a circuit adventure team repairing a broken smart-city console." />
+          </figure>
           <p class="eyebrow">Retro Circuit Adventure</p>
           <h1>Circuit Quest</h1>
           <p class="lead">Move through a top-down smart city lab, talk to NPCs, answer circuit questions, and fix Arduino-style board puzzles.</p>
-          <div class="menu-actions">
-            <button id="start-game" class="gb-btn primary" type="button" disabled>Start Mission</button>
-            <button id="sound-toggle-menu" class="gb-btn" type="button">Sound: Off</button>
+          <div class="learning-card">
+            <strong>Grade 9 Circuit Goals</strong>
+            <ul>
+              <li>Identify series and parallel circuit behavior.</li>
+              <li>Use V = I × R and P = V × I in simple problems.</li>
+              <li>Choose safe components for basic circuit repair.</li>
+            </ul>
+          </div>
+          <div class="mobile-selected gb-card" id="mobile-selected-card">
+            <div class="tiny-sprite engineer" aria-hidden="true"><span></span></div>
+            <div>
+              <strong id="mobile-selected-name">No specialist selected</strong>
+              <small>Tap Choose Character to select your player.</small>
+            </div>
+          </div>
+          <div class="menu-actions title-actions">
+            <button id="choose-character" class="gb-btn" type="button">Choose Character</button>
           </div>
         </section>
 
-        <section class="select-card gb-card">
+        <section id="character-modal" class="select-card gb-card">
           <div class="card-head">
             <div>
               <p class="eyebrow">Choose Specialist</p>
               <h2>Party Select</h2>
             </div>
-            <span id="select-status" class="badge">Waiting</span>
+            <div class="select-head-actions">
+              <span id="select-status" class="badge">Waiting</span>
+              <button id="close-character" class="gb-btn small close-character" type="button">Close</button>
+            </div>
           </div>
           <div id="character-grid" class="character-grid"></div>
           <label class="select-row">
@@ -71,8 +85,14 @@
               <option value="mono">Mono LCD</option>
             </select>
           </label>
+          <div class="select-controls">
+            <button id="start-game" class="gb-btn primary" type="button" disabled>Start Mission</button>
+            <button id="music-toggle-menu" class="gb-btn" type="button">Music: On</button>
+            <button id="sfx-toggle-menu" class="gb-btn" type="button">SFX: On</button>
+          </div>
         </section>
       </div>
+      <div id="character-backdrop" class="character-backdrop" aria-hidden="true"></div>
     </section>
 
     <section id="screen-game" class="screen game-screen">
@@ -87,7 +107,8 @@
         <div class="hud-right">
           <div class="hud-chip"><span>Stage</span><b id="hud-stage">1/5</b></div>
           <div class="hud-chip"><span>Repairs</span><b id="hud-score">0</b></div>
-          <button id="sound-toggle-game" class="gb-btn small" type="button">Sound: Off</button>
+          <button id="music-toggle-game" class="gb-btn small" type="button">Music: On</button>
+          <button id="sfx-toggle-game" class="gb-btn small" type="button">SFX: On</button>
           <button id="menu-button" class="gb-btn small" type="button">Menu</button>
           <button id="reset-button" class="gb-btn small danger" type="button">Reset</button>
         </div>
@@ -104,7 +125,7 @@
           </div>
           <div id="world-guide" class="hint-strip">Next: Stage 1</div>
           <div id="world-board" class="board world-board" tabindex="0" aria-label="Story world map"></div>
-          <p class="help-text">Move with WASD / Arrow Keys. Press Space or Interact near the active gate.</p>
+          <p class="help-text">Desktop: WASD / Arrow Keys. Mobile: use the joystick and the Interact button beside it.</p>
         </div>
       </section>
 
@@ -129,6 +150,7 @@
               <p class="eyebrow">Mission Panel</p>
               <h3 id="mission-title">Repair Task</h3>
             </div>
+            <button id="mission-minimize" class="gb-btn small mission-minimize" type="button">Minimize</button>
           </div>
           <div class="progress-line">
             <span id="progress-text">0/3 complete</span>
@@ -139,11 +161,16 @@
         </aside>
       </section>
 
-      <div id="dpad" class="dpad" aria-label="Mobile controls">
-        <button type="button" data-dir="up">▲</button>
-        <button type="button" data-dir="left">◀</button>
-        <button type="button" data-dir="down">▼</button>
-        <button type="button" data-dir="right">▶</button>
+      <button id="mission-tab" class="mission-tab gb-btn primary" type="button">Mission</button>
+
+      <div id="mobile-controls" class="mobile-controls" aria-label="Mobile game controls">
+        <div id="joystick" class="joystick" aria-label="Mobile joystick control">
+          <div class="joystick-label">MOVE</div>
+          <div id="joystick-base" class="joystick-base">
+            <div id="joystick-thumb" class="joystick-thumb"></div>
+          </div>
+        </div>
+        <button id="mobile-action" class="mobile-action gb-btn primary" type="button">Interact</button>
       </div>
     </section>
 
