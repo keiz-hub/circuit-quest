@@ -1,6 +1,8 @@
 window.CQAudio = (() => {
   let ctx = null;
-  let enabled = false;
+  let unlocked = false;
+  let musicEnabled = true;
+  let sfxEnabled = true;
   let bgmTimer = null;
   let stepGate = 0;
   const notes = [196, 247, 262, 330, 294, 247, 220, 262];
@@ -11,8 +13,18 @@ window.CQAudio = (() => {
     if (ctx.state === 'suspended') ctx.resume();
   }
 
+  function unlock() {
+    try {
+      ensure();
+      unlocked = true;
+      refreshMusic();
+    } catch (err) {
+      console.warn('Audio unlock failed', err);
+    }
+  }
+
   function tone(freq = 440, duration = 0.08, type = 'square', volume = 0.035) {
-    if (!enabled) return;
+    if (!sfxEnabled || !unlocked) return;
     ensure();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -26,43 +38,49 @@ window.CQAudio = (() => {
     osc.stop(ctx.currentTime + duration);
   }
 
-  function startBgm() {
-    if (!enabled || bgmTimer) return;
+  function playMusicNote() {
+    if (!musicEnabled || !unlocked) return;
     ensure();
-    bgmTimer = setInterval(() => {
-      tone(notes[noteIndex % notes.length], 0.11, 'square', 0.018);
-      noteIndex += 1;
-    }, 340);
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.value = notes[noteIndex % notes.length];
+    gain.gain.value = 0.014;
+    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.12);
+    noteIndex += 1;
   }
 
-  function stopBgm() {
-    clearInterval(bgmTimer);
-    bgmTimer = null;
+  function refreshMusic() {
+    if (!musicEnabled || !unlocked) {
+      clearInterval(bgmTimer);
+      bgmTimer = null;
+      return;
+    }
+    if (bgmTimer) return;
+    bgmTimer = setInterval(playMusicNote, 360);
+  }
+
+  function getState() {
+    return { music: musicEnabled, sfx: sfxEnabled };
   }
 
   return {
-    isEnabled: () => enabled,
-    toggle() {
-      enabled = !enabled;
-      if (enabled) {
-        ensure();
-        startBgm();
-        tone(523, 0.08, 'square', 0.04);
-      } else {
-        stopBgm();
-      }
-      return enabled;
+    getState,
+    unlock,
+    toggleMusic() {
+      musicEnabled = !musicEnabled;
+      if (musicEnabled) unlock();
+      refreshMusic();
+      return getState();
     },
-    enable() {
-      enabled = true;
-      ensure();
-      startBgm();
-      return enabled;
-    },
-    off() {
-      enabled = false;
-      stopBgm();
-      return enabled;
+    toggleSfx() {
+      sfxEnabled = !sfxEnabled;
+      if (sfxEnabled) unlock();
+      return getState();
     },
     sfx(name) {
       if (name === 'select') tone(440, 0.06);
