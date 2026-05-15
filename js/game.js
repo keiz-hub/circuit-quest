@@ -12,7 +12,6 @@
     activeTasks: [],
     taskIndex: 0,
     gateOpen: false,
-    npcRead: false,
     consoleActive: false,
     player: { x: 7, y: 82, dir: 'right', moving: false },
     worldPlayer: { x: 7, y: 82, dir: 'right', moving: false },
@@ -20,7 +19,9 @@
     lastDoor: { x: 7, y: 82, dir: 'right', moving: false },
     keys: new Set(),
     loop: null,
-    currentRepair: { selectedPart: null, selectedPins: [] }
+    currentRepair: { selectedPart: null },
+    missionMinimized: false,
+    joystick: { x: 0, y: 0, active: false }
   };
 
   const els = {};
@@ -32,16 +33,24 @@
     cache();
     renderCharacterSelect();
     bindEvents();
-    UI.setSoundLabels(Audio.isEnabled());
+    UI.setAudioLabels(Audio.getState());
   }
 
   function cache() {
     Object.assign(els, {
       introNext: UI.$('#intro-next'),
       startGame: UI.$('#start-game'),
-      soundMenu: UI.$('#sound-toggle-menu'),
-      soundGame: UI.$('#sound-toggle-game'),
+      musicMenu: UI.$('#music-toggle-menu'),
+      musicGame: UI.$('#music-toggle-game'),
+      sfxMenu: UI.$('#sfx-toggle-menu'),
+      sfxGame: UI.$('#sfx-toggle-game'),
       palette: UI.$('#palette-select'),
+      chooseCharacter: UI.$('#choose-character'),
+      closeCharacter: UI.$('#close-character'),
+      characterModal: UI.$('#character-modal'),
+      characterBackdrop: UI.$('#character-backdrop'),
+      mobileSelectedCard: UI.$('#mobile-selected-card'),
+      mobileSelectedName: UI.$('#mobile-selected-name'),
       characterGrid: UI.$('#character-grid'),
       selectStatus: UI.$('#select-status'),
       hudSprite: UI.$('#hud-sprite'),
@@ -58,29 +67,43 @@
       worldAction: UI.$('#world-action'),
       stageAction: UI.$('#stage-action'),
       worldGuide: UI.$('#world-guide'),
-      npcBox: UI.$('#npc-box'),
       stageLabel: UI.$('#stage-label'),
       stageTitle: UI.$('#stage-title'),
       stageHelp: UI.$('#stage-help'),
+      missionPanel: UI.$('#mission-panel'),
       missionIcon: UI.$('#mission-icon'),
       missionTitle: UI.$('#mission-title'),
       missionType: UI.$('#mission-type'),
       progressText: UI.$('#progress-text'),
       progressFill: UI.$('#progress-fill'),
       taskPanel: UI.$('#task-panel'),
+      missionMinimize: UI.$('#mission-minimize'),
+      missionTab: UI.$('#mission-tab'),
       playAgain: UI.$('#play-again'),
-      endMenu: UI.$('#end-menu')
+      endMenu: UI.$('#end-menu'),
+      joystick: UI.$('#joystick'),
+      joystickBase: UI.$('#joystick-base'),
+      joystickThumb: UI.$('#joystick-thumb'),
+      mobileAction: UI.$('#mobile-action')
     });
   }
 
   function bindEvents() {
-    els.introNext.addEventListener('click', () => { Audio.sfx('select'); UI.screen('#screen-menu'); });
+    els.introNext.addEventListener('click', () => { Audio.unlock(); Audio.sfx('select'); UI.screen('#screen-menu'); });
     els.startGame.addEventListener('click', startGame);
-    els.soundMenu.addEventListener('click', toggleSound);
-    els.soundGame.addEventListener('click', toggleSound);
+    els.musicMenu.addEventListener('click', toggleMusic);
+    els.musicGame.addEventListener('click', toggleMusic);
+    els.sfxMenu.addEventListener('click', toggleSfx);
+    els.sfxGame.addEventListener('click', toggleSfx);
     els.palette.addEventListener('change', (e) => document.body.dataset.palette = e.target.value);
+    els.chooseCharacter?.addEventListener('click', openCharacterModal);
+    els.closeCharacter?.addEventListener('click', closeCharacterModal);
+    els.characterBackdrop?.addEventListener('click', closeCharacterModal);
     els.worldAction.addEventListener('click', interact);
     els.stageAction.addEventListener('click', interact);
+    els.mobileAction?.addEventListener('click', interact);
+    els.missionMinimize?.addEventListener('click', minimizeMissionPanel);
+    els.missionTab?.addEventListener('click', openMissionPanel);
     els.resetButton.addEventListener('click', () => UI.confirm({
       title: 'Reset mission?',
       message: 'Your current progress will be lost and puzzles will reshuffle.',
@@ -102,22 +125,109 @@
     });
     window.addEventListener('keyup', (event) => state.keys.delete(event.key.toLowerCase()));
 
-    UI.$$('#dpad [data-dir]').forEach((btn) => {
-      btn.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        step(btn.dataset.dir, DATA.settings.touchStep);
-        btn._timer = setInterval(() => step(btn.dataset.dir, DATA.settings.touchStep), 130);
-      });
-      const stop = () => { clearInterval(btn._timer); activePlayer().moving = false; renderPlayerOnly(); };
-      btn.addEventListener('pointerup', stop);
-      btn.addEventListener('pointerleave', stop);
-      btn.addEventListener('pointercancel', stop);
-    });
+    bindJoystick();
   }
 
-  function toggleSound() {
-    const enabled = Audio.toggle();
-    UI.setSoundLabels(enabled);
+  function bindJoystick() {
+    if (!els.joystickBase || !els.joystickThumb) return;
+
+    const resetJoystick = () => {
+      state.joystick = { x: 0, y: 0, active: false };
+      els.joystickThumb.style.transform = 'translate(-50%, -50%)';
+      activePlayer().moving = false;
+      renderPlayerOnly();
+    };
+
+    const updateJoystick = (event) => {
+      const rect = els.joystickBase.getBoundingClientRect();
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const max = rect.width * 0.34;
+      let dx = event.clientX - centerX;
+      let dy = event.clientY - centerY;
+      const length = Math.hypot(dx, dy);
+      if (length > max) {
+        dx = (dx / length) * max;
+        dy = (dy / length) * max;
+      }
+      state.joystick = {
+        x: max ? dx / max : 0,
+        y: max ? dy / max : 0,
+        active: true
+      };
+      els.joystickThumb.style.transform = `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px))`;
+    };
+
+    els.joystickBase.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      if (state.mode === 'stage' && state.consoleActive && !state.gateOpen) {
+        UI.toast('Finish the active task before moving.', 'bad');
+        return;
+      }
+      Audio.unlock();
+      els.joystickBase.setPointerCapture?.(event.pointerId);
+      updateJoystick(event);
+    });
+    els.joystickBase.addEventListener('pointermove', (event) => {
+      if (!state.joystick.active) return;
+      event.preventDefault();
+      updateJoystick(event);
+    });
+    els.joystickBase.addEventListener('pointerup', resetJoystick);
+    els.joystickBase.addEventListener('pointercancel', resetJoystick);
+    els.joystickBase.addEventListener('lostpointercapture', resetJoystick);
+  }
+
+
+  function openCharacterModal() {
+    Audio.unlock();
+    Audio.sfx('select');
+    els.characterModal?.classList.add('open');
+    els.characterBackdrop?.classList.add('open');
+    els.characterBackdrop?.setAttribute('aria-hidden', 'false');
+    setTimeout(() => els.characterGrid?.querySelector('button')?.focus(), 30);
+  }
+
+  function closeCharacterModal() {
+    els.characterModal?.classList.remove('open');
+    els.characterBackdrop?.classList.remove('open');
+    els.characterBackdrop?.setAttribute('aria-hidden', 'true');
+  }
+
+  function openMissionPanel() {
+    state.missionMinimized = false;
+    updateMissionOverlayState();
+  }
+
+  function minimizeMissionPanel() {
+    state.missionMinimized = true;
+    updateMissionOverlayState();
+  }
+
+  function updateMissionOverlayState() {
+    const panel = els.missionPanel || UI.$('#mission-panel');
+    const tab = els.missionTab || UI.$('#mission-tab');
+    if (!panel || !tab) return;
+    const shouldOpen = state.mode === 'stage' && state.consoleActive && !state.gateOpen && !state.missionMinimized;
+    panel.classList.toggle('mobile-open', shouldOpen);
+    panel.classList.toggle('mobile-minimized', state.mode === 'stage' && state.consoleActive && !state.gateOpen && state.missionMinimized);
+    tab.classList.toggle('show', state.mode === 'stage' && state.consoleActive && !state.gateOpen && state.missionMinimized);
+    tab.classList.toggle('has-progress', state.taskIndex > 0);
+  }
+
+  function toggleMusic() {
+    Audio.unlock();
+    const stateAudio = Audio.toggleMusic();
+    UI.setAudioLabels(stateAudio);
+    Audio.unlock();
+    Audio.sfx('select');
+  }
+
+  function toggleSfx() {
+    Audio.unlock();
+    const stateAudio = Audio.toggleSfx();
+    UI.setAudioLabels(stateAudio);
+    if (stateAudio.sfx) Audio.sfx('select');
   }
 
   function renderCharacterSelect() {
@@ -137,18 +247,33 @@
   }
 
   function selectCharacter(id) {
+    Audio.unlock();
     state.selected = DATA.characters.find((c) => c.id === id);
     UI.$$('.character-card').forEach((card) => card.classList.toggle('selected', card.dataset.id === id));
     els.selectStatus.textContent = 'Ready';
     els.selectStatus.classList.add('ready');
     els.startGame.disabled = false;
     Audio.sfx('select');
-    UI.toast(`${state.selected.name} joined the team.`, 'good');
+    updateMobileSelected();
+    UI.toast(`${state.selected.name} joined the team. Tap Start Mission when ready.`, 'good');
+  }
+
+
+  function updateMobileSelected() {
+    if (!els.mobileSelectedCard || !els.mobileSelectedName || !state.selected) return;
+    const sprite = els.mobileSelectedCard.querySelector('.tiny-sprite');
+    if (sprite) {
+      sprite.className = `tiny-sprite ${state.selected.css}`;
+      sprite.innerHTML = '<span></span>';
+    }
+    els.mobileSelectedName.textContent = `${state.selected.name} • ${state.selected.job}`;
   }
 
   function startGame() {
     if (!state.selected) return UI.toast('Choose a specialist first.', 'bad');
-    if (!Audio.isEnabled()) UI.setSoundLabels(Audio.enable());
+    Audio.unlock();
+    UI.setAudioLabels(Audio.getState());
+    closeCharacterModal();
     resetRun();
     UI.screen('#screen-game');
     setMode('world');
@@ -193,9 +318,9 @@
     }
     state.taskIndex = 0;
     state.gateOpen = false;
-    state.npcRead = false;
     state.consoleActive = false;
-    state.currentRepair = { selectedPart: null, selectedPins: [] };
+    state.missionMinimized = false;
+    state.currentRepair = { selectedPart: null };
     state.stagePlayer = { ...stage.spawn, dir: stage.spawn.x > 50 ? 'left' : 'right', moving: false };
   }
 
@@ -203,6 +328,7 @@
     state.mode = mode;
     els.worldView.classList.toggle('active', mode === 'world');
     els.stageView.classList.toggle('active', mode === 'stage');
+    updateMissionOverlayState();
   }
 
   function renderAll() {
@@ -224,7 +350,6 @@
 
   function renderWorld() {
     els.worldBoard.innerHTML = '';
-    renderWorldDecor();
     renderWorldPath();
     DATA.stages.forEach((stage, i) => {
       const gate = obj('gate', stage.gate.x, stage.gate.y);
@@ -257,13 +382,6 @@
     els.worldBoard.appendChild(svg);
   }
 
-  function renderWorldDecor() {
-    [
-      ['map-deco tree', 24, 75], ['map-deco tree', 44, 59], ['map-deco rock', 61, 48],
-      ['map-deco tree', 80, 28], ['map-deco cloud', 24, 18], ['map-deco cloud', 72, 12]
-    ].forEach(([cls, x, y]) => els.worldBoard.appendChild(obj(cls, x, y)));
-  }
-
   function renderStage() {
     const stage = getStage();
     els.stageBoard.innerHTML = '';
@@ -271,10 +389,30 @@
     els.stageLabel.textContent = `Stage ${state.stageIndex + 1} • ${labelForMode(stage.challengeMode)}`;
     els.stageTitle.textContent = stage.title;
     els.missionIcon.textContent = stage.icon;
-    els.npcBox.innerHTML = `<div class="npc-face">${stage.npc.icon}</div><div><strong>${stage.npc.name}</strong><br>${stage.npc.line}</div>`;
+    if (els.npcBox) {
+      const guide = stage.npc || { icon: '💬', name: 'Mission Guide', line: 'Go to the broken console, interact, then complete the mission panel to unlock the exit.' };
+      const modeLabel = labelForMode(stage.challengeMode);
+      const guideName = guide.name || 'Mission Guide';
+      const guideLine = guide.line || 'Go to the broken console, interact, then complete the mission panel to unlock the exit.';
+      const icon = guide.icon || '💬';
+      const initials = guideName.split(/\s+/).map((word) => word[0]).join('').slice(0, 2).toUpperCase();
 
-    const npc = obj('npc', stage.npcPos.x, stage.npcPos.y);
-    els.stageBoard.appendChild(npc);
+      els.npcBox.className = 'npc-box has-message';
+      els.npcBox.setAttribute('aria-label', `${guideName}: ${guideLine}`);
+      els.npcBox.innerHTML = `
+        <div class="npc-face" aria-hidden="true">
+          <span class="npc-emoji">${UI.escapeHtml(icon)}</span>
+          <small>${UI.escapeHtml(initials)}</small>
+        </div>
+        <div class="npc-message">
+          <div class="npc-profile">
+            <strong>${UI.escapeHtml(guideName)}</strong>
+            <span>${UI.escapeHtml(modeLabel)} Guide</span>
+          </div>
+          <p>${UI.escapeHtml(guideLine)}</p>
+        </div>
+      `;
+    }
     stage.props.forEach((p) => els.stageBoard.appendChild(obj(`prop ${p.type}`, p.x, p.y)));
 
     const consoleEl = obj('console', stage.console.x, stage.console.y);
@@ -306,6 +444,8 @@
     if (state.gateOpen) {
       els.taskPanel.innerHTML = `<div class="feedback good">Console repaired. The exit gate is open. Walk to the exit and interact.</div>`;
       els.stageHelp.textContent = 'The exit is open. Head to the gate.';
+      state.missionMinimized = true;
+      updateMissionOverlayState();
       return;
     }
 
@@ -317,29 +457,35 @@
       els.taskPanel.innerHTML = `
         <div class="task-card locked-task">
           <p class="eyebrow">Console Locked</p>
-          <div class="task-text">Go to the broken console to answer.</div>
-          <p>The mission is visible, but the controls are locked until your character reaches the console.</p>
+          <div class="task-text">Go to the broken console to answer or repair.</div>
+          <p>Walk beside the BROKEN console and press Interact / Space. This prevents players from answering far away from the mission device.</p>
         </div>
         <div class="feedback bad">Move beside the BROKEN console, then press Interact / Space.</div>
       `;
       return;
     }
 
-    els.stageHelp.textContent = 'Mission panel is active. Finish the tasks to repair the console and unlock the exit.';
+    els.stageHelp.textContent = 'Mission is active. Character movement is locked until this task is completed or the console is repaired.';
     if (task.type === 'repair') renderRepairTask(task);
     else renderQuestionTask(task);
+    updateMissionOverlayState();
   }
 
   function renderQuestionTask(task) {
     els.taskPanel.innerHTML = '';
-    const card = document.createElement('div');
-    card.className = 'task-card';
-    card.innerHTML = `<p class="eyebrow">${task.type === 'choice' ? 'Choose Answer' : 'Calculate'}</p><div class="task-text">${UI.escapeHtml(task.q)}</div><p>${UI.escapeHtml(task.tip || '')}</p>`;
-    els.taskPanel.appendChild(card);
 
     if (task.type === 'choice') {
-      const grid = document.createElement('div');
-      grid.className = 'choice-grid';
+      const card = document.createElement('div');
+      card.className = 'task-card choice-card';
+      card.innerHTML = `
+        <div class="choice-copy">
+          <p class="eyebrow">Choose Answer</p>
+          <div class="task-text">${UI.escapeHtml(task.q)}</div>
+          <p>${UI.escapeHtml(task.tip || '')}</p>
+        </div>
+        <div class="choice-grid inline-choices"></div>
+      `;
+      const grid = card.querySelector('.choice-grid');
       shuffle(task.choices).forEach((choice) => {
         const btn = document.createElement('button');
         btn.className = 'choice-btn';
@@ -348,9 +494,14 @@
         btn.addEventListener('click', () => submitAnswer(choice));
         grid.appendChild(btn);
       });
-      els.taskPanel.appendChild(grid);
+      els.taskPanel.appendChild(card);
       return;
     }
+
+    const card = document.createElement('div');
+    card.className = 'task-card';
+    card.innerHTML = `<p class="eyebrow">Calculate</p><div class="task-text">${UI.escapeHtml(task.q)}</div><p>${UI.escapeHtml(task.tip || '')}</p>`;
+    els.taskPanel.appendChild(card);
 
     const row = document.createElement('div');
     row.className = 'answer-row';
@@ -362,42 +513,36 @@
   }
 
   function renderRepairTask(task) {
-    state.currentRepair = { selectedPart: null, selectedPins: [] };
-    const terminals = unique([
-      ...task.correctPins,
-      '5V', 'GND', 'PIN 2', 'PIN 8', 'PIN 10', 'PIN 13', 'LED+', 'BUS+', 'LOAD', 'SENSOR-', 'CORE-'
-    ]).slice(0, 6);
+    state.currentRepair = { selectedPart: null };
+    const fromPin = task.correctPins?.[0] || 'FROM';
+    const toPin = task.correctPins?.[1] || 'TO';
 
     els.taskPanel.innerHTML = `
-      <div class="repair-task">
+      <div class="repair-task easy-repair">
         <div class="repair-header">
           <p class="eyebrow">Fix Circuit</p>
           <h3>${UI.escapeHtml(task.title)}</h3>
           <p>${UI.escapeHtml(task.prompt)}</p>
           <div class="repair-goal">
-            <strong>Goal:</strong> Pick <b>1 component</b>, then pick the <b>2 terminals</b> it should connect.
+            <strong>Easy Goal:</strong> Pick the <b>missing part</b> that should go between <b>${UI.escapeHtml(fromPin)}</b> and <b>${UI.escapeHtml(toPin)}</b>.
           </div>
         </div>
 
-        <div class="simple-circuit" aria-label="Simple circuit diagram">
-          <div class="terminal start-node">START</div>
+        <div class="simple-circuit easy" aria-label="Simple circuit diagram">
+          <div class="terminal start-node">${UI.escapeHtml(fromPin)}</div>
           <div class="wire-line broken-line"></div>
           <div class="missing-part">?</div>
           <div class="wire-line broken-line"></div>
-          <div class="terminal end-node">END</div>
+          <div class="terminal end-node">${UI.escapeHtml(toPin)}</div>
         </div>
 
         <div class="repair-section">
-          <div class="repair-section-title">1. Choose the missing component</div>
-          <div class="parts-grid"></div>
+          <div class="repair-section-title">Step 1: Pick the missing part</div>
+          <p class="repair-note">Choose the best part to complete the broken path.</p>
+          <div class="parts-grid compact-parts"></div>
         </div>
 
-        <div class="repair-section">
-          <div class="repair-section-title">2. Choose the two terminals to connect</div>
-          <div class="terminal-grid"></div>
-        </div>
-
-        <div class="repair-status" aria-live="polite">Selected: none yet</div>
+        <div class="repair-status" aria-live="polite">Selected: no part yet</div>
         <button class="gb-btn primary check-repair" type="button">Test Repair</button>
       </div>
     `;
@@ -412,13 +557,14 @@
         state.currentRepair.selectedPart = part;
         els.taskPanel.querySelectorAll('.part-btn').forEach((b) => b.classList.remove('selected'));
         btn.classList.add('selected');
+        els.taskPanel.querySelector('.simple-circuit')?.classList.add('active');
+        const slot = els.taskPanel.querySelector('.missing-part');
+        if (slot) slot.textContent = part;
         updateRepairStatus();
       });
       parts.appendChild(btn);
     });
 
-    const terminalGrid = els.taskPanel.querySelector('.terminal-grid');
-    terminals.forEach((pin) => terminalGrid.appendChild(pinButton(pin)));
     els.taskPanel.querySelector('.check-repair').addEventListener('click', () => submitRepair(task));
     updateRepairStatus();
   }
@@ -426,26 +572,8 @@
   function updateRepairStatus() {
     const status = els.taskPanel.querySelector('.repair-status');
     if (!status) return;
-    const part = state.currentRepair.selectedPart || 'no component';
-    const pins = state.currentRepair.selectedPins.length ? state.currentRepair.selectedPins.join(' + ') : 'no terminals';
-    status.textContent = `Selected: ${part} → ${pins}`;
-  }
-
-  function pinButton(pin) {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'pin';
-    btn.textContent = pin;
-    btn.addEventListener('click', () => {
-      const selected = state.currentRepair.selectedPins;
-      if (selected.includes(pin)) selected.splice(selected.indexOf(pin), 1);
-      else if (selected.length < 2) selected.push(pin);
-      else { selected.shift(); selected.push(pin); }
-      els.taskPanel.querySelectorAll('.pin').forEach((b) => b.classList.toggle('selected', selected.includes(b.textContent)));
-      els.taskPanel.querySelector('.simple-circuit')?.classList.toggle('active', selected.length === 2);
-      updateRepairStatus();
-    });
-    return btn;
+    const part = state.currentRepair.selectedPart || 'no part yet';
+    status.textContent = `Selected: ${part}`;
   }
 
   function submitAnswer(value) {
@@ -466,9 +594,8 @@
       renderMissionPanel();
       return;
     }
-    const pinsOk = task.correctPins.every((pin) => state.currentRepair.selectedPins.includes(pin));
     const partOk = state.currentRepair.selectedPart === task.correctPart;
-    if (!pinsOk || !partOk) return wrong();
+    if (!partOk) return wrong();
     correct();
   }
 
@@ -476,7 +603,7 @@
     Audio.sfx('correct');
     state.taskIndex += 1;
     state.repairs += 1;
-    UI.toast('Correct. System repair increased.', 'good');
+    UI.toast('Correct! Repair progress increased.', 'good');
     renderHud();
     if (state.taskIndex >= state.activeTasks.length) openGate();
     else renderMissionPanel();
@@ -489,7 +616,7 @@
       state.repairs = Math.max(0, state.repairs - 1);
     }
     replaceCurrentTask();
-    UI.toast('Wrong. Progress deducted and task changed.', 'bad');
+    UI.toast('Try again. Progress deducted and a new Grade 9 task loaded.', 'bad');
     renderHud();
     renderMissionPanel();
   }
@@ -504,6 +631,7 @@
 
   function openGate() {
     state.gateOpen = true;
+    state.missionMinimized = true;
     Audio.sfx('unlock');
     UI.toast('Console fixed. Exit gate opened.', 'good');
     renderHud();
@@ -522,7 +650,6 @@
     const stage = getStage();
     if (dist(state.stagePlayer, stage.console) < 11) return useConsole();
     if (dist(state.stagePlayer, stage.exit) < 12) return useExit();
-    if (dist(state.stagePlayer, stage.npcPos) < 10) return UI.toast(`${stage.npc.name}: ${stage.npc.line}`);
     UI.toast(state.gateOpen ? 'Move closer to the exit gate.' : 'Move closer to the broken console.');
   }
 
@@ -537,7 +664,7 @@
     renderHud();
     renderStage();
     renderMissionPanel();
-    UI.toast(`${stage.npc.name}: ${stage.npc.line}`, 'good');
+    UI.toast(`${stage.title}: Find and repair the broken console.`, 'good');
   }
 
   function useConsole() {
@@ -547,6 +674,7 @@
       return UI.toast('Move beside the broken console first.', 'bad');
     }
     state.consoleActive = true;
+    state.missionMinimized = false;
     Audio.sfx('interact');
     renderMissionPanel();
     UI.toast('Console activated. You can now answer.', 'good');
@@ -585,14 +713,33 @@
 
   function updateMovement() {
     if (!UI.$('#screen-game').classList.contains('active')) return;
+    if (state.mode === 'stage' && state.consoleActive && !state.gateOpen) {
+      const player = activePlayer();
+      player.moving = false;
+      if (state.joystick.active) {
+        state.joystick = { x: 0, y: 0, active: false };
+        if (els.joystickThumb) els.joystickThumb.style.transform = 'translate(-50%, -50%)';
+      }
+      renderPlayerOnly();
+      return;
+    }
     let dx = 0, dy = 0;
-    const speed = DATA.settings.baseSpeed;
+    const isMobile = window.matchMedia('(max-width: 760px)').matches;
+    const speed = isMobile ? DATA.settings.baseSpeed * 0.82 : DATA.settings.baseSpeed;
     if (state.keys.has('arrowup') || state.keys.has('w')) dy -= speed;
     if (state.keys.has('arrowdown') || state.keys.has('s')) dy += speed;
     if (state.keys.has('arrowleft') || state.keys.has('a')) dx -= speed;
     if (state.keys.has('arrowright') || state.keys.has('d')) dx += speed;
+    if (state.joystick.active) {
+      dx += state.joystick.x * speed;
+      dy += state.joystick.y * speed;
+    }
+    if (dx !== 0 && dy !== 0) {
+      dx *= 0.72;
+      dy *= 0.72;
+    }
     const player = activePlayer();
-    player.moving = dx !== 0 || dy !== 0;
+    player.moving = Math.abs(dx) > 0.01 || Math.abs(dy) > 0.01;
     if (dx !== 0) player.dir = dx < 0 ? 'left' : 'right';
     if (player.moving) {
       move(dx, dy);
@@ -668,7 +815,7 @@
     return nearest;
   }
   function labelForMode(mode) { return mode === 'questions' ? 'Questions' : mode === 'puzzles' ? 'Board Puzzle' : 'Mixed'; }
-  function normalize(v) { return String(v).trim().toLowerCase().replace(/\s+/g, ' '); }
+  function normalize(v) { return String(v).trim().toLowerCase().replace(/\b(watts?|w|amps?|a|ohms?)\b|Ω/g, '').replace(/\s+/g, ' '); }
   function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
   function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
   function unique(arr) { return [...new Set(arr)]; }
