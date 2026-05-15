@@ -1,8 +1,8 @@
 window.CQ = {
   settings: {
     stagesPerRun: 5,
-    baseSpeed: 0.42,
-    touchStep: 2.4
+    baseSpeed: 0.34,
+    touchStep: 1.5
   },
   characters: [
     {
@@ -39,12 +39,11 @@ window.CQ = {
       gateLabel: 'LAB',
       challengeMode: 'questions',
       taskCount: 3,
-      npc: { icon: '👩‍🔬', name: 'Lab Tech Nia', line: 'The backup lights are failing. Answer the console checks so I can reboot the lab breakers.' },
+      npc: { icon: '👩‍🔬', name: 'Lab Tech Nia', line: 'The backup lights are failing. Go to the broken console and complete the circuit checks to restore this lab.' },
       gate: { x: 14, y: 72 },
       spawn: { x: 14, y: 78 },
       console: { x: 75, y: 35 },
       exit: { x: 85, y: 74 },
-      npcPos: { x: 34, y: 54 },
       props: [],
       questions: [
         { type: 'input', q: 'Backup lamp uses 12V and 2A.\nPower = ? W', a: '24', tip: 'Use P = V × I.' },
@@ -67,21 +66,20 @@ window.CQ = {
       icon: '▣',
       gateLabel: 'RES',
       challengeMode: 'puzzles',
-      taskCount: 4,
+      taskCount: 2,
       npc: { icon: '🧰', name: 'Mechanic Bo', line: 'The board is missing parts. Pick the correct component or wire path to repair the resistor bench.' },
       gate: { x: 33, y: 62 },
       spawn: { x: 84, y: 76 },
       console: { x: 26, y: 34 },
       exit: { x: 14, y: 74 },
-      npcPos: { x: 58, y: 48 },
       props: [],
       questions: [],
       puzzles: [
-        { type: 'repair', title: 'LED Current Limiter', prompt: 'Choose the part that safely limits LED current.', correctPart: '220Ω Resistor', parts: ['220Ω Resistor', 'Direct Wire', 'Capacitor', 'Buzzer'], correctPins: ['5V', 'LED+'], tip: 'A resistor protects an LED from too much current.' },
-        { type: 'repair', title: 'Series Resistor Path', prompt: 'Complete the path from source to R1 for a series circuit.', correctPart: 'Jumper Wire', parts: ['Jumper Wire', 'Open Switch', '9V Battery', 'Sensor'], correctPins: ['BAT+', 'R1'], tip: 'Series paths must stay connected end-to-end.' },
-        { type: 'repair', title: 'Parallel Branch Restore', prompt: 'Pick the component needed to restore the second branch.', correctPart: 'Branch Wire', parts: ['Branch Wire', 'Broken Wire', 'Motor', 'LED only'], correctPins: ['NODE A', 'NODE B'], tip: 'Parallel circuits need branch connections.' },
-        { type: 'repair', title: 'Fuse Replacement', prompt: 'Choose the safety part that protects the circuit.', correctPart: 'Fuse', parts: ['Fuse', 'Nail', 'Direct Short', 'Speaker'], correctPins: ['IN', 'OUT'], tip: 'A fuse opens the circuit during dangerous current.' },
-        { type: 'repair', title: 'Pull-down Input', prompt: 'Choose the part that keeps an input stable when not pressed.', correctPart: '10kΩ Resistor', parts: ['10kΩ Resistor', 'LED', 'Open Wire', 'Piezo'], correctPins: ['PIN 2', 'GND'], tip: 'Pull-down resistors connect input to ground.' }
+        { type: 'repair', title: 'Protect the LED', prompt: 'The LED is connected to power. Add the part that limits current.', correctPart: 'Resistor', parts: ['Resistor', 'Direct Wire'], correctPins: ['5V', 'LED+'], pinOptions: ['5V', 'LED+', 'GND', 'PIN 2'], tip: 'For Grade 9: LED + resistor + power is safer than direct wire.' },
+        { type: 'repair', title: 'Complete a Series Path', prompt: 'The wire from the battery to R1 is missing. Choose the simple connector.', correctPart: 'Wire', parts: ['Wire', 'Open Gap'], correctPins: ['BAT+', 'R1'], pinOptions: ['BAT+', 'R1', 'GND', 'LED+'], tip: 'Series means one continuous path.' },
+        { type: 'repair', title: 'Restore a Parallel Branch', prompt: 'A branch is disconnected. Use a branch wire to reconnect the two nodes.', correctPart: 'Branch Wire', parts: ['Branch Wire', 'Broken Wire'], correctPins: ['NODE A', 'NODE B'], pinOptions: ['NODE A', 'NODE B', '5V', 'GND'], tip: 'Parallel circuits have more than one path.' },
+        { type: 'repair', title: 'Replace the Safety Fuse', prompt: 'The safety fuse is missing between IN and OUT.', correctPart: 'Fuse', parts: ['Fuse', 'Direct Short'], correctPins: ['IN', 'OUT'], pinOptions: ['IN', 'OUT', '5V', 'LED+'], tip: 'A fuse protects the circuit from too much current.' },
+        { type: 'repair', title: 'Button Input Ground', prompt: 'Keep the button input stable by connecting PIN 2 to ground through a resistor.', correctPart: 'Resistor', parts: ['Resistor', 'Open Wire'], correctPins: ['PIN 2', 'GND'], pinOptions: ['PIN 2', 'GND', '5V', 'LED+'], tip: 'This is a simple input circuit: input pin + resistor to ground.' }
       ]
     },
     {
@@ -91,13 +89,12 @@ window.CQ = {
       icon: '➜',
       gateLabel: 'FLOW',
       challengeMode: 'questions',
-      taskCount: 5,
-      npc: { icon: '📡', name: 'Signal Scout', line: 'Current is flowing the wrong way through the tunnel sensors. Decode the readings before the gate overloads.' },
+      taskCount: 4,
+      npc: { icon: '📡', name: 'Signal Scout', line: 'The tunnel sensors are confused. Use the console to decode current flow and repair the readings.' },
       gate: { x: 52, y: 50 },
       spawn: { x: 14, y: 78 },
       console: { x: 69, y: 64 },
       exit: { x: 84, y: 30 },
-      npcPos: { x: 38, y: 40 },
       props: [],
       questions: [
         { type: 'choice', q: 'Conventional current flows from:', choices: ['positive to negative', 'negative to positive', 'middle outward'], a: 'positive to negative', tip: 'This is the conventional current direction.' },
@@ -109,7 +106,10 @@ window.CQ = {
         { type: 'input', q: '10A enters a junction. One branch has 4A and another has 1A. Last branch = ? A', a: '5', tip: '10 - 4 - 1.' },
         { type: 'choice', q: 'Current is measured in:', choices: ['amperes', 'ohms', 'watts only'], a: 'amperes', tip: 'Ampere is the current unit.' },
         { type: 'input', q: 'A 12V line through 2Ω gives ? A', a: '6', tip: '12 ÷ 2.' },
-        { type: 'choice', q: 'A short circuit usually has:', choices: ['very low resistance', 'infinite resistance', 'no wire'], a: 'very low resistance', tip: 'Low resistance can create dangerous current.' }
+        { type: 'choice', q: 'A short circuit usually has:', choices: ['very low resistance', 'infinite resistance', 'no wire'], a: 'very low resistance', tip: 'Low resistance can create dangerous current.' },
+        { type: 'choice', q: 'Current needs a path that is:', choices: ['closed', 'painted', 'hidden'], a: 'closed', tip: 'A closed path lets current flow.' },
+        { type: 'input', q: '6A enters a junction. One branch uses 2A.\nOther branch = ? A', a: '4', tip: '6 - 2 = 4.' },
+        { type: 'choice', q: 'The symbol A means:', choices: ['ampere', 'ohm', 'watt'], a: 'ampere', tip: 'Ampere is the unit for current.' }
       ],
       puzzles: []
     },
@@ -120,22 +120,21 @@ window.CQ = {
       icon: '🔧',
       gateLabel: 'FIX',
       challengeMode: 'puzzles',
-      taskCount: 6,
-      npc: { icon: '🌱', name: 'Grid Keeper', line: 'The plant routes city power. Fix the broken pathways on the controller board to revive the grid.' },
+      taskCount: 3,
+      npc: { icon: '🌱', name: 'Grid Keeper', line: 'The plant route is broken. Use the console to choose the missing parts and complete the safe path.' },
       gate: { x: 70, y: 38 },
       spawn: { x: 14, y: 78 },
       console: { x: 35, y: 60 },
       exit: { x: 82, y: 30 },
-      npcPos: { x: 55, y: 50 },
       props: [],
       questions: [],
       puzzles: [
-        { type: 'repair', title: 'Broken Ground Path', prompt: 'Connect the sensor ground path.', correctPart: 'Ground Wire', parts: ['Ground Wire', 'LED', 'Open Switch', 'Motor'], correctPins: ['GND', 'SENSOR-'], tip: 'Sensors need a ground reference.' },
-        { type: 'repair', title: 'Relay Control', prompt: 'Choose the part used to switch a higher-power load.', correctPart: 'Relay Module', parts: ['Relay Module', 'Loose Screw', 'Battery Label', 'Paper Clip'], correctPins: ['PIN 8', 'LOAD'], tip: 'A relay lets a low-power pin switch bigger loads.' },
-        { type: 'repair', title: 'Input Button Path', prompt: 'Wire the button to the microcontroller input.', correctPart: 'Button Wire', parts: ['Button Wire', 'Short Wire', 'Buzzer', 'No Part'], correctPins: ['BTN', 'PIN 4'], tip: 'The controller reads a button through an input pin.' },
-        { type: 'repair', title: 'Power Bus Restore', prompt: 'Connect the positive bus to feed the branch.', correctPart: '5V Jumper', parts: ['5V Jumper', 'GND Jumper', 'Capacitor only', 'Open Circuit'], correctPins: ['5V', 'BUS+'], tip: 'Positive supply must go to the positive bus.' },
-        { type: 'repair', title: 'Motor Driver Enable', prompt: 'Choose the module needed to control a motor safely.', correctPart: 'Motor Driver', parts: ['Motor Driver', 'LED', 'Bare Wire', 'Resistor only'], correctPins: ['PIN 9', 'MOTOR'], tip: 'A motor driver protects the controller pin.' },
-        { type: 'repair', title: 'Continuity Fix', prompt: 'Complete the broken trace between node A and B.', correctPart: 'Trace Bridge', parts: ['Trace Bridge', 'Wrong Jumper', 'Capacitor', 'No Connect'], correctPins: ['NODE A', 'NODE B'], tip: 'A trace bridge restores continuity.' }
+        { type: 'repair', title: 'Reconnect Ground', prompt: 'The sensor ground is broken. Connect GND to SENSOR-.', correctPart: 'Ground Wire', parts: ['Ground Wire', 'Open Gap'], correctPins: ['GND', 'SENSOR-'], pinOptions: ['GND', 'SENSOR-', '5V', 'PIN 4'], tip: 'Ground completes the return path.' },
+        { type: 'repair', title: 'Switch a Load Safely', prompt: 'A controller pin must switch a load safely. Choose the module, then connect PIN 8 to LOAD.', correctPart: 'Relay Module', parts: ['Relay Module', 'Paper Clip'], correctPins: ['PIN 8', 'LOAD'], pinOptions: ['PIN 8', 'LOAD', 'GND', 'LED+'], tip: 'A relay is a safe switch for a larger load.' },
+        { type: 'repair', title: 'Wire the Button', prompt: 'Connect the button to input PIN 4.', correctPart: 'Button Wire', parts: ['Button Wire', 'Short Wire'], correctPins: ['BTN', 'PIN 4'], pinOptions: ['BTN', 'PIN 4', '5V', 'MOTOR'], tip: 'The controller reads the button through an input pin.' },
+        { type: 'repair', title: 'Restore Positive Supply', prompt: 'Connect 5V to BUS+ so the branch receives power.', correctPart: '5V Jumper', parts: ['5V Jumper', 'GND Jumper'], correctPins: ['5V', 'BUS+'], pinOptions: ['5V', 'BUS+', 'GND', 'PIN 8'], tip: 'Positive supply goes to the positive bus.' },
+        { type: 'repair', title: 'Control a Motor Safely', prompt: 'A motor needs more current than a small pin can give. Choose the driver and connect PIN 9 to MOTOR.', correctPart: 'Motor Driver', parts: ['Motor Driver', 'Bare Wire'], correctPins: ['PIN 9', 'MOTOR'], pinOptions: ['PIN 9', 'MOTOR', 'GND', 'LED+'], tip: 'A driver protects the controller pin.' },
+        { type: 'repair', title: 'Bridge the Broken Trace', prompt: 'The path between NODE A and NODE B is broken. Add a trace bridge.', correctPart: 'Trace Bridge', parts: ['Trace Bridge', 'No Connect'], correctPins: ['NODE A', 'NODE B'], pinOptions: ['NODE A', 'NODE B', '5V', 'GND'], tip: 'A complete path restores continuity.' }
       ]
     },
     {
@@ -145,13 +144,12 @@ window.CQ = {
       icon: '★',
       gateLabel: 'CORE',
       challengeMode: 'mixed',
-      taskCount: 7,
-      npc: { icon: '🛰️', name: 'Core AI', line: 'Final repair required. Solve calculations and complete the controller board to restore the smart city.' },
+      taskCount: 4,
+      npc: { icon: '🛰️', name: 'Core AI', line: 'Final repair required. Complete both circuit questions and board repairs to restore the smart city.' },
       gate: { x: 88, y: 24 },
       spawn: { x: 14, y: 78 },
       console: { x: 52, y: 34 },
       exit: { x: 84, y: 74 },
-      npcPos: { x: 28, y: 50 },
       props: [],
       questions: [
         { type: 'choice', q: 'In series circuits, current is:', choices: ['same in every component', 'different everywhere', 'always zero'], a: 'same in every component', tip: 'Series has one current path.' },
@@ -161,12 +159,15 @@ window.CQ = {
         { type: 'input', q: '18V through 3Ω gives ? A', a: '6', tip: '18 ÷ 3.' },
         { type: 'choice', q: 'Source current in parallel equals:', choices: ['sum of branch currents', 'smallest branch', 'one resistor'], a: 'sum of branch currents', tip: 'Branches add at the source.' },
         { type: 'input', q: 'Equivalent series resistance of 5Ω, 6Ω, and 9Ω = ? Ω', a: '20', tip: 'Add series resistors.' },
-        { type: 'input', q: 'City core load: 120V × 2A = ? W', a: '240', tip: 'Power = volts × amps.' }
+        { type: 'input', q: 'City core load: 120V × 2A = ? W', a: '240', tip: 'Power = volts × amps.' },
+        { type: 'choice', q: 'Which circuit has more than one path?', choices: ['parallel', 'series', 'open'], a: 'parallel', tip: 'Parallel circuits have branches.' },
+        { type: 'input', q: 'Two series resistors: 4Ω + 6Ω = ? Ω', a: '10', tip: 'Series resistors add.' },
+        { type: 'choice', q: 'A broken wire creates an:', choices: ['open circuit', 'extra battery', 'automatic repair'], a: 'open circuit', tip: 'A broken wire opens the path.' }
       ],
       puzzles: [
-        { type: 'repair', title: 'Core LED Status', prompt: 'Protect the status LED with the correct component.', correctPart: '330Ω Resistor', parts: ['330Ω Resistor', 'Direct Wire', 'Relay', 'Open Gap'], correctPins: ['PIN 13', 'LED+'], tip: 'Controller LEDs need a resistor.' },
-        { type: 'repair', title: 'Emergency Fan Control', prompt: 'Choose the safe control module for the fan.', correctPart: 'Transistor Driver', parts: ['Transistor Driver', 'Direct Pin', 'Loose Wire', 'Button'], correctPins: ['PIN 10', 'FAN'], tip: 'A driver lets a pin control higher current.' },
-        { type: 'repair', title: 'Final Ground Link', prompt: 'Complete the common ground connection.', correctPart: 'Ground Link', parts: ['Ground Link', '5V Link', 'LED', 'No Part'], correctPins: ['GND', 'CORE-'], tip: 'All modules need a shared ground.' }
+        { type: 'repair', title: 'Core Status LED', prompt: 'Protect the status LED. Choose the resistor and connect PIN 13 to LED+.', correctPart: 'Resistor', parts: ['Resistor', 'Direct Wire'], correctPins: ['PIN 13', 'LED+'], pinOptions: ['PIN 13', 'LED+', 'GND', 'FAN'], tip: 'LEDs need resistors to limit current.' },
+        { type: 'repair', title: 'Emergency Fan Control', prompt: 'Use a driver so PIN 10 can control the fan safely.', correctPart: 'Driver', parts: ['Driver', 'Direct Pin'], correctPins: ['PIN 10', 'FAN'], pinOptions: ['PIN 10', 'FAN', '5V', 'LED+'], tip: 'A driver helps control higher current devices.' },
+        { type: 'repair', title: 'Final Ground Link', prompt: 'Complete the common ground connection from GND to CORE-.', correctPart: 'Ground Link', parts: ['Ground Link', '5V Link'], correctPins: ['GND', 'CORE-'], pinOptions: ['GND', 'CORE-', '5V', 'PIN 13'], tip: 'All modules need a shared ground.' }
       ]
     }
   ]
