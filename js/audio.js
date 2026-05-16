@@ -45,7 +45,7 @@ window.CQAudio = (() => {
     const gain = ctx.createGain();
     osc.type = 'square';
     osc.frequency.value = notes[noteIndex % notes.length];
-    gain.gain.value = 0.014;
+    gain.gain.value = 0.035;
     gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.12);
     osc.connect(gain);
     gain.connect(ctx.destination);
