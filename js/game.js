@@ -70,6 +70,8 @@
       stageLabel: UI.$('#stage-label'),
       stageTitle: UI.$('#stage-title'),
       stageHelp: UI.$('#stage-help'),
+      stageBrief: UI.$('#stage-brief'),
+      npcBox: UI.$('#npc-box'),
       missionPanel: UI.$('#mission-panel'),
       missionIcon: UI.$('#mission-icon'),
       missionTitle: UI.$('#mission-title'),
@@ -389,30 +391,8 @@
     els.stageLabel.textContent = `Stage ${state.stageIndex + 1} • ${labelForMode(stage.challengeMode)}`;
     els.stageTitle.textContent = stage.title;
     els.missionIcon.textContent = stage.icon;
-    if (els.npcBox) {
-      const guide = stage.npc || { icon: '💬', name: 'Mission Guide', line: 'Go to the broken console, interact, then complete the mission panel to unlock the exit.' };
-      const modeLabel = labelForMode(stage.challengeMode);
-      const guideName = guide.name || 'Mission Guide';
-      const guideLine = guide.line || 'Go to the broken console, interact, then complete the mission panel to unlock the exit.';
-      const icon = guide.icon || '💬';
-      const initials = guideName.split(/\s+/).map((word) => word[0]).join('').slice(0, 2).toUpperCase();
+    renderNpcGuide(stage);
 
-      els.npcBox.className = 'npc-box has-message';
-      els.npcBox.setAttribute('aria-label', `${guideName}: ${guideLine}`);
-      els.npcBox.innerHTML = `
-        <div class="npc-face" aria-hidden="true">
-          <span class="npc-emoji">${UI.escapeHtml(icon)}</span>
-          <small>${UI.escapeHtml(initials)}</small>
-        </div>
-        <div class="npc-message">
-          <div class="npc-profile">
-            <strong>${UI.escapeHtml(guideName)}</strong>
-            <span>${UI.escapeHtml(modeLabel)} Guide</span>
-          </div>
-          <p>${UI.escapeHtml(guideLine)}</p>
-        </div>
-      `;
-    }
     stage.props.forEach((p) => els.stageBoard.appendChild(obj(`prop ${p.type}`, p.x, p.y)));
 
     const consoleEl = obj('console', stage.console.x, stage.console.y);
@@ -430,6 +410,49 @@
     els.stageBoard.appendChild(exit);
 
     renderSprite(els.stageBoard, 'stage-player', state.stagePlayer);
+  }
+
+  function renderNpcGuide(stage) {
+    const guide = stage.npc || {};
+    const modeLabel = labelForMode(stage.challengeMode);
+    const icon = guide.icon || '💬';
+    const guideName = guide.name || 'Mission Guide';
+    const guideLine = guide.line || 'Go to the broken console and complete the mission to unlock the exit.';
+    const guideText = `${icon}  ${guideName} — ${modeLabel} Guide: ${guideLine}`;
+    const target = els.stageBrief || els.npcBox;
+
+    if (!target) {
+      console.warn('Stage guide element missing. Expected #stage-brief or #npc-box.');
+      return;
+    }
+
+    target.className = 'stage-brief guide-is-visible';
+    target.setAttribute('aria-label', guideText);
+    target.dataset.guide = guideText;
+    target.textContent = guideText;
+    target.style.cssText = [
+      'display:block!important',
+      'visibility:visible!important',
+      'opacity:1!important',
+      'width:100%!important',
+      'min-height:42px!important',
+      'margin:8px 0 10px!important',
+      'padding:10px 14px!important',
+      'border:3px solid var(--line)!important',
+      'background:var(--lcd-4)!important',
+      'color:var(--ink)!important',
+      'border-radius:8px!important',
+      'box-sizing:border-box!important',
+      'font-family:var(--font-ui)!important',
+      'font-weight:900!important',
+      'font-size:.88rem!important',
+      'line-height:1.35!important',
+      'white-space:normal!important',
+      'overflow:visible!important',
+      'text-indent:0!important',
+      'text-transform:none!important',
+      'word-break:normal!important'
+    ].join(';');
   }
 
   function renderMissionPanel() {
