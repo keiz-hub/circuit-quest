@@ -8,7 +8,7 @@ window.CQ = {
     {
       id: 'engineer',
       css: 'engineer',
-      name: 'Ari Volt',
+      name: 'Wire Yuhir',
       job: 'Field Engineer',
       role: 'Balanced movement and circuit reading.',
       skill: 'Wire Scan'
@@ -16,7 +16,7 @@ window.CQ = {
     {
       id: 'mechanic',
       css: 'mechanic',
-      name: 'Mika Fuse',
+      name: 'Con Fuse',
       job: 'Circuit Mechanic',
       role: 'Good at repairs and broken paths.',
       skill: 'Fuse Fix'
@@ -24,7 +24,7 @@ window.CQ = {
     {
       id: 'scientist',
       css: 'scientist',
-      name: 'Dr. Lumi',
+      name: 'Dr. Strange',
       job: 'Lab Scientist',
       role: 'Best at calculations and analysis.',
       skill: 'Flow Decode'
