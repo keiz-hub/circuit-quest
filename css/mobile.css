@@ -1540,3 +1540,15 @@
     margin: 4px 0 6px !important;
   }
 }
+
+
+/* v32: mobile map instruction popup */
+@media (max-width: 760px) {
+  .map-help { padding: 12px; align-items: center; }
+  .map-help-card { max-height: calc(100vh - 24px); overflow-y: auto; padding: 16px; }
+  .control-tips { grid-template-columns: 1fr; gap: 10px; }
+  .control-tip { padding: 11px; }
+  .control-tip strong { font-size: .48rem; }
+  .desktop-tip { opacity: .82; }
+  .map-help-note { padding: 10px; font-size: .92rem; }
+}
