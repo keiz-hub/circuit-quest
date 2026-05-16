@@ -21,7 +21,9 @@
     loop: null,
     currentRepair: { selectedPart: null },
     missionMinimized: false,
-    joystick: { x: 0, y: 0, active: false }
+    joystick: { x: 0, y: 0, active: false },
+    mapHelpOpen: false,
+    mapHelpShown: false
   };
 
   const els = {};
@@ -86,7 +88,9 @@
       joystick: UI.$('#joystick'),
       joystickBase: UI.$('#joystick-base'),
       joystickThumb: UI.$('#joystick-thumb'),
-      mobileAction: UI.$('#mobile-action')
+      mobileAction: UI.$('#mobile-action'),
+      mapHelp: UI.$('#map-help'),
+      mapHelpOk: UI.$('#map-help-ok')
     });
   }
 
@@ -104,6 +108,7 @@
     els.worldAction.addEventListener('click', interact);
     els.stageAction.addEventListener('click', interact);
     els.mobileAction?.addEventListener('click', interact);
+    els.mapHelpOk?.addEventListener('click', closeMapHelp);
     els.missionMinimize?.addEventListener('click', minimizeMissionPanel);
     els.missionTab?.addEventListener('click', openMissionPanel);
     els.resetButton.addEventListener('click', () => UI.confirm({
@@ -276,12 +281,35 @@
     Audio.unlock();
     UI.setAudioLabels(Audio.getState());
     closeCharacterModal();
+    state.mapHelpShown = false;
     resetRun();
     UI.screen('#screen-game');
     setMode('world');
     renderAll();
     startLoop();
     UI.toast('Mission started. Follow the map path.', 'good');
+    showMapHelp();
+  }
+
+  function showMapHelp() {
+    if (!els.mapHelp || state.mapHelpShown) return;
+    state.mapHelpShown = true;
+    state.mapHelpOpen = true;
+    activePlayer().moving = false;
+    state.keys.clear();
+    state.joystick = { x: 0, y: 0, active: false };
+    if (els.joystickThumb) els.joystickThumb.style.transform = 'translate(-50%, -50%)';
+    els.mapHelp.classList.add('open');
+    els.mapHelp.setAttribute('aria-hidden', 'false');
+    setTimeout(() => els.mapHelpOk?.focus(), 30);
+  }
+
+  function closeMapHelp() {
+    if (!els.mapHelp) return;
+    state.mapHelpOpen = false;
+    els.mapHelp.classList.remove('open');
+    els.mapHelp.setAttribute('aria-hidden', 'true');
+    Audio.sfx('select');
   }
 
   function toMenu() {
@@ -359,7 +387,7 @@
       gate.classList.toggle('cleared', i < state.stageIndex);
       gate.classList.toggle('locked', i > state.stageIndex);
       gate.innerHTML = `<span class="label">${stage.gateLabel}</span>`;
-      gate.addEventListener('click', () => tryStage(i));
+      gate.setAttribute('aria-label', `${stage.gateLabel} gate. Move near it and press Interact to enter.`);
       els.worldBoard.appendChild(gate);
 
       const node = obj('node', stage.gate.x, stage.gate.y + 11);
@@ -406,7 +434,7 @@
     exit.classList.toggle('open', state.gateOpen);
     exit.classList.toggle('locked', !state.gateOpen);
     exit.innerHTML = `<span class="label">${state.gateOpen ? 'EXIT' : 'LOCKED'}</span>`;
-    exit.addEventListener('click', () => useExit());
+    exit.setAttribute('aria-label', `${state.gateOpen ? 'Open exit' : 'Locked exit'}. Move near it and press Interact to use it.`);
     els.stageBoard.appendChild(exit);
 
     renderSprite(els.stageBoard, 'stage-player', state.stagePlayer);
@@ -663,6 +691,7 @@
   }
 
   function interact() {
+    if (state.mapHelpOpen) return;
     if (!UI.$('#screen-game').classList.contains('active')) return;
     Audio.sfx('interact');
     if (state.mode === 'world') {
@@ -735,6 +764,7 @@
   }
 
   function updateMovement() {
+    if (state.mapHelpOpen) return;
     if (!UI.$('#screen-game').classList.contains('active')) return;
     if (state.mode === 'stage' && state.consoleActive && !state.gateOpen) {
       const player = activePlayer();
